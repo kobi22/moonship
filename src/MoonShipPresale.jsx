@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 // =============================================================
 // MoonShip Presale Landing Page (React + Tailwind CSS)
@@ -6,7 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 // - 30-tier presale pricing & auto-splitting contributions across tiers
 // - Countdown that flips phases: UPCOMING → LIVE → ENDED
 // - Canvas starfield + meteors + slow, detailed mothership animation
-// - Claim phase with vesting schedule (40% TGE, then +20% at 3/6/9 months)
+// - **Airdrop** distribution (no claim portal): tokens are airdropped after presale
 // - Console test suites for critical helpers (do not affect UI)
 // =============================================================
 
@@ -35,11 +37,11 @@ const CONFIG = {
     initialRaisedSOL: 1287.45,
     tiers: DEFAULT_TIERS,
   },
-  // Vesting config used by claim logic
-  vesting: {
-    tgePercent: 40,          // percent unlocked at presale end (TGE)
-    cliffMonths: [3, 6, 9],  // additional unlock checkpoints
-    cliffPercentEach: 20,    // each cliff unlocks this percent
+  // Airdrop plan (no claim portal): send tokens to contributor wallets after presale
+  airdrop: {
+    // When we plan to execute the airdrop (UTC); adjust as needed
+    dropISO: "2025-10-02T00:00:00Z", // example: ~24h after presale end
+    note: "All allocations will be airdropped directly to contributor wallets. No claim is required.",
   },
   socials: {
     twitter: "https://x.com/yourmoonship",
@@ -149,9 +151,8 @@ export default function MoonShipPresale() {
   const [now, setNow] = useState(() => new Date());
   const [contribution, setContribution] = useState(1);
 
-  // Per-wallet allocation & claims (mocked client-side; wire to backend/chain later)
+  // Per-wallet allocation (mocked client-side; wire to backend/chain later)
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
-  const [claimedTokens, setClaimedTokens] = useState(0);
 
   // Animation canvas
   const canvasRef = useRef(null);
@@ -420,31 +421,9 @@ export default function MoonShipPresale() {
     setUserAllocationTokens((t) => +(t + q.totalTokens).toFixed(0));
   }
 
-  // === Claim logic ===
-  function addMonths(date, months) {
-    const d = new Date(date.getTime());
-    d.setUTCMonth(d.getUTCMonth() + months);
-    return d;
-  }
-
-  const unlockedPercent = useMemo(() => {
-    if (now < end) return 0;
-    let p = CONFIG.vesting.tgePercent;
-    for (const mth of CONFIG.vesting.cliffMonths) {
-      if (now >= addMonths(end, mth)) p += CONFIG.vesting.cliffPercentEach;
-    }
-    return Math.min(100, p);
-  }, [now, end]);
-
-  const claimableTokens = Math.max(0, Math.floor(userAllocationTokens * (unlockedPercent / 100)) - claimedTokens);
-
-  function handleClaim() {
-    if (!connected) return alert("Connect your wallet first.");
-    if (claimableTokens <= 0) return alert("Nothing to claim yet.");
-    // In a real app, this would invoke a claim transaction; here we just update client state
-    setClaimedTokens((c) => c + claimableTokens);
-    alert(`Claimed ${claimableTokens.toLocaleString()} MSHP`);
-  }
+  // Airdrop helpers
+  const airdropDate = useMemo(() => new Date(CONFIG.airdrop.dropISO), []);
+  const airdropSoon = now >= end; // show notice once presale has ended
 
   return (
     <div className="relative min-h-screen text-white overflow-hidden selection:bg-indigo-500/30 selection:text-white">
@@ -532,7 +511,7 @@ export default function MoonShipPresale() {
                 <div className="mt-1 text-right text-[11px] text-white/60">{percent.toFixed(1)}%</div>
               </div>
 
-              {/* Contribute or Claim */}
+              {/* Contribute or Airdrop notice */}
               {phase === "live" && !soldOut ? (
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                   <div className="sm:col-span-2">
@@ -557,17 +536,16 @@ export default function MoonShipPresale() {
                 </div>
               ) : (
                 <div className="mt-6 space-y-3">
+                  <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm">
+                    <div className="font-semibold">Airdrop</div>
+                    <div className="text-white/70 mt-1">{CONFIG.airdrop.note}</div>
+                    <div className="text-white/60 mt-1">Scheduled: {airdropDate.toUTCString()}</div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <InfoCard label="Your Allocation" value={`${userAllocationTokens.toLocaleString()} MSHP`} />
-                    <InfoCard label="Unlocked" value={`${unlockedPercent}%`} />
-                    <InfoCard label="Claimed" value={`${claimedTokens.toLocaleString()} MSHP`} />
-                    <InfoCard label="Claimable Now" value={`${claimableTokens.toLocaleString()} MSHP`} />
+                    <InfoCard label="Status" value={airdropSoon ? "Queued for airdrop" : "Pending presale end"} />
                   </div>
-                  <button onClick={handleClaim} className={`w-full rounded-xl px-4 py-3 font-semibold shadow-lg transition ${claimableTokens>0 && connected ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-700 text-white/50 cursor-not-allowed'}`}>
-                    Claim
-                  </button>
-                  {!connected && <div className="text-xs text-white/60">Connect your wallet to claim.</div>}
-                  {connected && claimableTokens<=0 && <div className="text-xs text-white/60">Nothing claimable yet. TGE unlocks {CONFIG.vesting.tgePercent}% at presale end.</div>}
+                  {!connected && <div className="text-xs text-white/60">Connect your wallet to record the destination for airdrop.</div>}
                 </div>
               )}
 
@@ -603,8 +581,8 @@ export default function MoonShipPresale() {
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-3 text-center text-xs">
-                <Stat label="Your Allocation" value={`${(estQuote.totalTokens).toLocaleString()} MSHP`} />
-                <Stat label="Vesting" value="40% TGE, then 20%/3mo x3" />
+                <Stat label="Your Allocation (Preview)" value={`${(estQuote.totalTokens).toLocaleString()} MSHP`} />
+                <Stat label="Distribution" value="Airdrop to wallet" />
                 <Stat label="Network" value="Solana" />
               </div>
             </div>
@@ -622,7 +600,7 @@ export default function MoonShipPresale() {
             <TokenCard title="Presale" percent={30} desc="300,000,000 MSHP" />
             <TokenCard title="Liquidity" percent={20} desc="200,000,000 MSHP (LP locked)" />
             <TokenCard title="Community/Rewards" percent={25} desc="250,000,000 MSHP" />
-            <TokenCard title="Team" percent={15} desc="150,000,000 MSHP (vesting)" />
+            <TokenCard title="Team" percent={15} desc="150,000,000 MSHP" />
             <TokenCard title="Marketing" percent={10} desc="100,000,000 MSHP" />
             <div className="rounded-3xl border border-white/10 p-6 bg-slate-900/60">
               <h4 className="font-semibold">Key Params</h4>
@@ -644,7 +622,7 @@ export default function MoonShipPresale() {
           <h2 className="text-3xl font-bold">Roadmap</h2>
           <div className="mt-8 grid md:grid-cols-4 gap-6">
             <RoadItem phase="Q3 2025" title="Presale & Community" points={["Presale launch", "LP plan & audits", "TG/X growth"]} />
-            <RoadItem phase="Q4 2025" title="DEX Listing" points={["Raydium listing", "LP lock", "Claim portal live"]} />
+            <RoadItem phase="Q4 2025" title="DEX Listing" points={["Raydium listing", "LP lock", "Airdrop execution"]} />
             <RoadItem phase="Q1 2026" title="Utility Launch" points={["Staking rewards", "Partnerships", "CEX talks"]} />
             <RoadItem phase="Q2 2026" title="Expansion" points={["Ecosystem grants", "Mobile wallet perks", "Global campaigns"]} />
           </div>
@@ -658,7 +636,7 @@ export default function MoonShipPresale() {
           <ol className="mt-6 grid md:grid-cols-3 gap-6 list-decimal list-inside text-white/80">
             <li className="rounded-2xl bg-slate-900/60 border border-white/10 p-5">Install Phantom or Backpack wallet.</li>
             <li className="rounded-2xl bg-slate-900/60 border border-white/10 p-5">Connect wallet & choose SOL amount.</li>
-            <li className="rounded-2xl bg-slate-900/60 border border-white/10 p-5">Confirm transaction. Claim at launch.</li>
+            <li className="rounded-2xl bg-slate-900/60 border border-white/10 p-5">Confirm transaction. Tokens are airdropped after presale.</li>
           </ol>
         </div>
       </section>
@@ -671,7 +649,7 @@ export default function MoonShipPresale() {
             <FAQ q="When does the presale end?" a={`Ends on ${new Date(CONFIG.presale.endISO).toUTCString()}.`} />
             <FAQ q="Which currencies are accepted?" a={`Contribute in ${CONFIG.presale.accepted.join(", ")}.`} />
             <FAQ q="Is liquidity locked?" a="Yes — LP tokens are locked after listing to reduce rug risk." />
-            <FAQ q="Is there vesting?" a="Yes — 40% at TGE, remaining 60% linearly over 3 releases (every 3 months)." />
+            <FAQ q="How do I receive tokens?" a="All tokens are airdropped to the wallet that contributed—no claim required." />
           </div>
         </div>
       </section>
