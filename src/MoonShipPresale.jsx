@@ -450,9 +450,17 @@ export default function MoonShipPresale() {
           <div className="flex items-center gap-3">
             <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer" className="text-white/70 hover:text-white text-sm">X</a>
             <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer" className="text-white/70 hover:text-white text-sm">TG</a>
-            <button onClick={handleConnect} className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-lg transition ${connected ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/30" : "bg-indigo-500 hover:bg-indigo-600"}`}>
-              {connected ? "Wallet Connected" : "Connect Wallet"}
-            </button>
+            <button
+  onClick={handleConnect}
+  className={`rounded-2xl px-4 py-2 text-sm font-semibold shadow-lg transition ${
+    connected
+      ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/30"
+      : "bg-indigo-500 hover:bg-indigo-600"
+  }`}
+>
+  {connected ? "Wallet Connected" : "Connect Wallet"}
+</button>
+
           </div>
         </div>
       </header>
