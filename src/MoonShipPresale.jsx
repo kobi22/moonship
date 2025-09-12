@@ -97,7 +97,7 @@ function MoonShipInner() {
 
   const { connected, publicKey } = useWallet();
 
-  // Animation background (kept minimal for now)
+  // Simple static background
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -248,7 +248,11 @@ function getTierState(currentRaisedSOL, tiers) {
     acc = tierEnd;
   }
   const last = tiers[tiers.length - 1];
-  return { currentTierIndex: tiers.length - 1, tierRemainingSOL: 0, currentPrice: last.pricePerSOL };
+  return {
+    currentTierIndex: tiers.length - 1,
+    tierRemainingSOL: 0,
+    currentPrice: last.pricePerSOL,
+  };
 }
 
 function quoteTokensForContribution(currentRaisedSOL, amountSOL, tiers) {
