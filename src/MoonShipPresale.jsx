@@ -46,7 +46,7 @@ const CONFIG = {
   socials: {
     twitter: "https://x.com/yourmoonship",
     telegram: "https://t.me/yourmoonship",
-    website: "https://moonship.xyz",
+    website: "https://moonship.shop",
   },
 };
 
