@@ -30,7 +30,7 @@ const CONFIG = {
     totalSupply: 1_000_000_000,
   },
   presale: {
-    hardCapUSD: 30_000_000, // raising in USD
+    hardCapUSD: 30_000_000,
     softCapUSD: 500_000,
     initialRaisedUSD: 12_874_500,
     batchPrice: 0.05, // presale ends at $0.05
@@ -80,10 +80,14 @@ function MoonShipInner() {
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
   const { connected, publicKey } = useWallet();
-  const percent = Math.min(100, (raisedUSD / CONFIG.presale.hardCapUSD) * 100);
+
+  const percent = Math.min(
+    100,
+    (raisedUSD / CONFIG.presale.hardCapUSD) * 100
+  );
   const soldOut = raisedUSD >= CONFIG.presale.hardCapUSD;
 
-  // simple starfield
+  // Starfield background
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -168,19 +172,21 @@ function MoonShipInner() {
         </div>
       </header>
 
-      {/* Presale */}
-      <section className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300">
+      {/* Hero */}
+      <section className="max-w-3xl mx-auto text-center py-16 px-6">
+        <h2 className="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300">
           MoonShip Presale
-        </h1>
+        </h2>
         <p className="mt-4 text-white/70">
           Raising <b>${CONFIG.presale.hardCapUSD.toLocaleString()}</b> with fair
           launch mechanics. Ends when price reaches{" "}
           <b>${CONFIG.presale.batchPrice.toFixed(2)}</b>.
         </p>
+      </section>
 
-        {/* Progress */}
-        <div className="mt-8 rounded-xl bg-slate-900/70 border border-white/10 p-6 text-left">
+      {/* Presale Card */}
+      <section className="max-w-2xl mx-auto px-6">
+        <div className="bg-slate-900/70 border border-white/10 rounded-xl p-6">
           <div className="flex justify-between text-xs text-white/60">
             <span>Raised</span>
             <span>
@@ -228,6 +234,15 @@ function MoonShipInner() {
           )}
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="mt-16 text-center text-sm text-white/60">
+        Presale ends at{" "}
+        <span className="font-semibold text-indigo-400">
+          ${CONFIG.presale.batchPrice.toFixed(2)}
+        </span>{" "}
+        per MSHP.
+      </footer>
     </div>
   );
 }
