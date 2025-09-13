@@ -10,7 +10,6 @@ import {
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import {
   PhantomWalletAdapter,
-  BackpackWalletAdapter,
   SolflareWalletAdapter,
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
@@ -25,7 +24,6 @@ const endpoint = import.meta.env.VITE_SOLANA_RPC || clusterApiUrl(network);
 
 const wallets = [
   new PhantomWalletAdapter(),
-  new BackpackWalletAdapter(),
   new SolflareWalletAdapter({ network }),
   new CoinbaseWalletAdapter(),
   new LedgerWalletAdapter(),
