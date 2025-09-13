@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
 import MoonShipPresale from "./MoonShipPresale.jsx";
 
 import {
@@ -14,12 +13,11 @@ import {
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-import { clusterApiUrl } from "@solana/web3.js";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const network = WalletAdapterNetwork.Mainnet;
-// Optional: use your own RPC via Vercel env VITE_SOLANA_RPC; falls back to cluster
 const endpoint = import.meta.env.VITE_SOLANA_RPC || clusterApiUrl(network);
 
 const wallets = [

@@ -1,1 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+body {
+  font-family: theme("fontFamily.sans");
+  background-color: #030014; /* space-dark background */
+  color: white;
+}
