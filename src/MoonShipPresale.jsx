@@ -95,21 +95,53 @@ function MoonShipInner() {
 
   const { connected, publicKey } = useWallet();
 
-  // Simple static background
+  // Starfield background
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#030014";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    const stars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      r: Math.random() * 1.5,
+      s: 0.2 + Math.random() * 0.8,
+    }));
+
+    function draw() {
+      ctx.fillStyle = "#030014";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = "#a2b6ff";
+      for (const star of stars) {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        ctx.fill();
+        star.x -= star.s;
+        if (star.x < 0) {
+          star.x = width;
+          star.y = Math.random() * height;
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    const resize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
 
   // Presale contribution logic
-  const { currentTierIndex, tierRemainingSOL, currentPrice } = getTierState(
-    raisedSOL,
-    TIERS
-  );
+  const { currentPrice } = getTierState(raisedSOL, TIERS);
   const estQuote = quoteTokensForContribution(
     raisedSOL,
     safeNum(contribution),
@@ -273,4 +305,3 @@ function safeNum(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x : 0;
 }
-
