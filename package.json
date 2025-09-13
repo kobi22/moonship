@@ -15,7 +15,6 @@
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.4",
-    "qrcode.react": "3.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -28,5 +27,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "homepage": "https://kobi22.github.io/moonship/"
+  "overrides": {
+    "qrcode.react": "3.1.0"
+  }
 }

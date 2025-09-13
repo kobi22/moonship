@@ -4,7 +4,6 @@ window.Buffer = Buffer;
 
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
 import MoonShipPresale from "./MoonShipPresale.jsx";
 
 import {
@@ -18,8 +17,8 @@ import {
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-import { clusterApiUrl } from "@solana/web3.js";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const network = WalletAdapterNetwork.Mainnet;
@@ -43,4 +42,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ConnectionProvider>
   </React.StrictMode>
 );
-
