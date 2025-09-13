@@ -1,79 +1,3 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
-import {
-  ConnectionProvider,
-  WalletProvider,
-  useWallet,
-} from "@solana/wallet-adapter-react";
-import {
-  WalletModalProvider,
-  WalletMultiButton,
-} from "@solana/wallet-adapter-react-ui";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  CoinbaseWalletAdapter,
-  LedgerWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import { clusterApiUrl } from "@solana/web3.js";
-import { motion } from "framer-motion";
-import "@solana/wallet-adapter-react-ui/styles.css";
-
-// =============================================================
-// CONFIG
-// =============================================================
-const CONFIG = {
-  token: {
-    name: "MoonShip",
-    symbol: "MSHP",
-    decimals: 9,
-    totalSupply: 1_000_000_000,
-  },
-  presale: {
-    hardCapUSD: 30_000_000,
-    softCapUSD: 500_000,
-    initialRaisedUSD: 12_874_500,
-    batchPrice: 0.05, // presale ends at $0.05
-    accepted: ["USDC", "SOL"],
-  },
-  socials: {
-    twitter: "https://x.com/yourmoonship",
-    telegram: "https://t.me/yourmoonship",
-    website: "https://moonship.shop",
-  },
-};
-
-// =============================================================
-// Wallet Providers wrapper
-// =============================================================
-export default function MoonShipPresale() {
-  const network = WalletAdapterNetwork.Mainnet;
-  const endpoint = clusterApiUrl(network);
-
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network }),
-      new CoinbaseWalletAdapter(),
-      new LedgerWalletAdapter(),
-    ],
-    [network]
-  );
-
-  return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <MoonShipInner />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
-}
-
-// =============================================================
-// Inner Component (UI)
-// =============================================================
 function MoonShipInner() {
   const [raisedUSD, setRaisedUSD] = useState(CONFIG.presale.initialRaisedUSD);
   const [contribution, setContribution] = useState(1000); // default in USD
@@ -81,41 +5,21 @@ function MoonShipInner() {
 
   const { connected, publicKey } = useWallet();
 
+  // Batch calculations
+  const totalBatches = Math.ceil(
+    CONFIG.presale.hardCapUSD / (CONFIG.presale.hardCapUSD / 30) // 30 batches default
+  );
+  const batchSizeUSD = CONFIG.presale.hardCapUSD / totalBatches;
+  const currentBatch = Math.min(
+    totalBatches,
+    Math.floor(raisedUSD / batchSizeUSD) + 1
+  );
+
   const percent = Math.min(
     100,
     (raisedUSD / CONFIG.presale.hardCapUSD) * 100
   );
   const soldOut = raisedUSD >= CONFIG.presale.hardCapUSD;
-
-  // Starfield background
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const stars = Array.from({ length: 120 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      r: Math.random() * 1.2,
-    }));
-
-    function draw() {
-      ctx.fillStyle = "#030014";
-      ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = "white";
-      stars.forEach((s) => {
-        ctx.beginPath();
-        ctx.globalAlpha = 0.5 + Math.random() * 0.5;
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      requestAnimationFrame(draw);
-    }
-    draw();
-  }, []);
 
   function handleContribute() {
     if (!connected || !publicKey) return alert("Connect your wallet first.");
@@ -132,55 +36,17 @@ function MoonShipInner() {
 
   return (
     <div className="relative min-h-screen text-white bg-black overflow-hidden">
-      {/* Starfield */}
-      <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
-
-      {/* Astronaut */}
-      <motion.img
-        src="/astronaut-nasa.png"
-        alt="Astronaut"
-        className="absolute bottom-10 right-10 w-44 md:w-56"
-        initial={{ x: "120%", opacity: 0 }}
-        animate={{
-          x: ["120%", "0%", "0%", "120%"],
-          rotate: [0, 10, -10, 0],
-          opacity: [0, 1, 1, 0],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          repeatDelay: 6,
-          ease: "easeInOut",
-        }}
-      />
-
-      {/* Nav */}
-      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40">
-        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 font-bold text-lg">
-            🚀 MoonShip
-          </div>
-          <div className="flex items-center gap-3">
-            <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
-              X
-            </a>
-            <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
-              TG
-            </a>
-            <WalletMultiButton />
-          </div>
-        </div>
-      </header>
-
       {/* Hero */}
       <section className="max-w-3xl mx-auto text-center py-16 px-6">
-        <h2 className="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300">
+        <h2 className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300">
           MoonShip Presale
         </h2>
         <p className="mt-4 text-white/70">
-          Raising <b>${CONFIG.presale.hardCapUSD.toLocaleString()}</b> with fair
-          launch mechanics. Ends when price reaches{" "}
+          Raising <b>${CONFIG.presale.hardCapUSD.toLocaleString()}</b>. Ends at{" "}
           <b>${CONFIG.presale.batchPrice.toFixed(2)}</b>.
+        </p>
+        <p className="mt-2 text-indigo-400 font-semibold">
+          Current Batch: {currentBatch} / {totalBatches}
         </p>
       </section>
 
@@ -234,15 +100,6 @@ function MoonShipInner() {
           )}
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="mt-16 text-center text-sm text-white/60">
-        Presale ends at{" "}
-        <span className="font-semibold text-indigo-400">
-          ${CONFIG.presale.batchPrice.toFixed(2)}
-        </span>{" "}
-        per MSHP.
-      </footer>
     </div>
   );
 }
