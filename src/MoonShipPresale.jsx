@@ -10,7 +10,6 @@ import {
 } from "@solana/wallet-adapter-react-ui";
 import {
   PhantomWalletAdapter,
-  BackpackWalletAdapter,
   SolflareWalletAdapter,
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
@@ -65,7 +64,6 @@ export default function MoonShipPresale() {
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
-      new BackpackWalletAdapter(),
       new SolflareWalletAdapter({ network }),
       new CoinbaseWalletAdapter(),
       new LedgerWalletAdapter(),
