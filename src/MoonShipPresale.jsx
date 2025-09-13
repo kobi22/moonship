@@ -1,3 +1,4 @@
+// src/MoonShipPresale.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import {
   ConnectionProvider,
@@ -18,22 +19,21 @@ import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-// =============================================================
-// CONFIG
-// =============================================================
+// ===== Mock config (kept simple/minimal) =====
+const DEFAULT_TIERS = generateLinearTiers({
+  tiers: 30,
+  startPrice: 120_000,
+  endPrice: 80_000,
+  totalCapSOL: 3000,
+});
+
 const CONFIG = {
-  token: {
-    name: "MoonShip",
-    symbol: "MSHP",
-    decimals: 9,
-    totalSupply: 1_000_000_000,
-  },
+  token: { name: "MoonShip", symbol: "MSHP", decimals: 9, totalSupply: 1_000_000_000 },
   presale: {
-    hardCapUSD: 30_000_000, // raise goal
-    softCapUSD: 500_000,
-    batchPrice: 0.05, // presale ends at $0.05
-    initialRaisedUSD: 1_287_450, // mock starting point
-    accepted: ["USDC", "SOL"],
+    hardCapSOL: DEFAULT_TIERS.reduce((a, t) => a + t.capSOL, 0),
+    softCapSOL: 500,
+    initialRaisedSOL: 1287.45,
+    tiers: DEFAULT_TIERS,
   },
   socials: {
     twitter: "https://x.com/yourmoonship",
@@ -41,9 +41,7 @@ const CONFIG = {
   },
 };
 
-// =============================================================
-// Wallet Providers wrapper
-// =============================================================
+// ===== Top-level providers (adds wallets to the connect button modal) =====
 export default function MoonShipPresale() {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = clusterApiUrl(network);
@@ -69,154 +67,168 @@ export default function MoonShipPresale() {
   );
 }
 
-// =============================================================
-// Inner Component (UI)
-// =============================================================
+// ===== Minimal clean UI with WalletMultiButton =====
 function MoonShipInner() {
-  const HARD_CAP = CONFIG.presale.hardCapUSD;
-
-  const [raisedUSD, setRaisedUSD] = useState(CONFIG.presale.initialRaisedUSD);
-  const [contribution, setContribution] = useState(1000);
+  const TIERS = CONFIG.presale.tiers;
+  const HARD_CAP = CONFIG.presale.hardCapSOL;
+  const [raisedSOL, setRaisedSOL] = useState(CONFIG.presale.initialRaisedSOL);
+  const [contribution, setContribution] = useState(1);
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
-
   const { connected, publicKey } = useWallet();
 
-  // Simple animated star background
+  // Background (solid color)
   const canvasRef = useRef(null);
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const stars = Array.from({ length: 120 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      r: Math.random() * 1.2,
-    }));
-
-    function draw() {
-      ctx.fillStyle = "#030014";
-      ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = "white";
-      stars.forEach((s) => {
-        ctx.beginPath();
-        ctx.globalAlpha = 0.5 + Math.random() * 0.5;
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      requestAnimationFrame(draw);
-    }
-    draw();
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    ctx.fillStyle = "#0b1220";
+    ctx.fillRect(0, 0, c.width, c.height);
   }, []);
 
-  const percent = Math.min(100, (raisedUSD / HARD_CAP) * 100);
-  const soldOut = raisedUSD >= HARD_CAP;
+  const { currentPrice } = getTierState(raisedSOL, TIERS);
+  const estQuote = quoteTokensForContribution(raisedSOL, safeNum(contribution), TIERS);
+  const percent = Math.min(100, (raisedSOL / HARD_CAP) * 100);
+  const soldOut = raisedSOL >= HARD_CAP;
 
   function handleContribute() {
     if (!connected || !publicKey) return alert("Connect your wallet first.");
-    const add = Number(contribution);
-    if (!isFinite(add) || add <= 0) return;
-    const remaining = Math.max(0, HARD_CAP - raisedUSD);
+    const add = safeNum(contribution);
+    if (!Number.isFinite(add) || add <= 0) return;
+    const remaining = Math.max(0, HARD_CAP - raisedSOL);
     const delta = Math.min(add, remaining);
     if (delta <= 0) return alert("Presale hard cap reached.");
-    setRaisedUSD((x) => x + delta);
-    setUserAllocationTokens(
-      (t) => t + Math.floor(delta / CONFIG.presale.batchPrice)
-    );
+    const q = quoteTokensForContribution(raisedSOL, delta, TIERS);
+    setRaisedSOL((x) => +(x + delta).toFixed(2));
+    setUserAllocationTokens((t) => +(t + q.totalTokens).toFixed(0));
   }
 
   return (
-    <div className="relative min-h-screen text-white bg-black overflow-hidden">
-      {/* Background */}
+    <div className="relative min-h-screen text-white">
       <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
 
-      {/* Nav */}
-      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40">
-        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 font-bold">🚀 MoonShip</div>
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-black/40 backdrop-blur border-b border-white/10">
+        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
-              Twitter
-            </a>
-            <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
-              Telegram
-            </a>
-            <WalletMultiButton />
+            <span className="text-lg font-bold">🚀 MoonShip</span>
+            <span className="text-white/60 text-sm">$MSHP</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <a className="text-white/70 hover:text-white text-sm" href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">Twitter</a>
+            <a className="text-white/70 hover:text-white text-sm" href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">Telegram</a>
+
+            {/* The button below opens the modal with the wallets we registered above */}
+            <WalletMultiButton className="!bg-indigo-600 hover:!bg-indigo-700 !rounded-xl !px-4 !py-2 !text-sm !font-semibold" />
+
+            {/* Helper text to show which wallets are available */}
+            <div className="hidden md:block text-xs text-white/60">
+              Supported: Phantom · Solflare · Coinbase · Ledger
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Presale */}
-      <section className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300">
-          MoonShip Presale
-        </h1>
-        <p className="mt-4 text-white/70">
-          Raising <b>${HARD_CAP.toLocaleString()}</b>. Ends when price reaches{" "}
-          <b>${CONFIG.presale.batchPrice.toFixed(2)}</b>.
+      {/* Body */}
+      <main className="mx-auto max-w-4xl px-4 py-12">
+        <h1 className="text-4xl font-extrabold tracking-tight">MoonShip Presale</h1>
+        <p className="mt-2 text-white/70">
+          Minimal, clean presale. Tiered pricing. Liquidity locked. Airdropped tokens.
         </p>
-      </section>
 
-      {/* Presale Card */}
-      <section className="max-w-2xl mx-auto px-6">
-        <div className="bg-slate-900/70 rounded-xl shadow border border-white/10 p-6">
-          <div className="flex justify-between text-sm text-white/60 mb-2">
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-6">
+          <div className="flex justify-between text-xs text-white/60">
             <span>Raised</span>
-            <span>
-              ${raisedUSD.toLocaleString()} / ${HARD_CAP.toLocaleString()}
-            </span>
+            <span>{raisedSOL.toLocaleString()} / {HARD_CAP} SOL</span>
           </div>
-          <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-3 bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400"
-              style={{ width: `${percent}%` }}
-            />
+          <div className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-3 bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400" style={{ width: `${percent}%` }} />
           </div>
-          <div className="mt-1 text-right text-xs">{percent.toFixed(1)}%</div>
+          <div className="mt-1 text-right text-[11px] text-white/60">{percent.toFixed(1)}%</div>
 
           {!soldOut ? (
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-              <div className="sm:col-span-2 text-left">
-                <label className="text-xs text-white/60">Amount (USD)</label>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-white/60">Amount (SOL)</label>
                 <input
                   type="number"
                   value={contribution}
                   onChange={(e) => setContribution(Number(e.target.value))}
-                  className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-3 outline-none focus:ring-2 focus:ring-indigo-400/50"
+                  placeholder="1.0"
                 />
-                <div className="mt-2 text-sm">
-                  You’ll receive ~{" "}
-                  <span className="font-semibold">
-                    {userAllocationTokens.toLocaleString()}
-                  </span>{" "}
-                  MSHP
+                <div className="mt-2 text-[12px] text-white/60">
+                  You’ll receive ~ <span className="text-white">{estQuote.totalTokens.toLocaleString()}</span> MSHP
                 </div>
               </div>
               <button
                 onClick={handleContribute}
-                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 font-semibold"
+                className="w-full rounded-xl px-4 py-3 font-semibold bg-indigo-600 hover:bg-indigo-700 shadow"
               >
                 Contribute
               </button>
             </div>
           ) : (
-            <div className="mt-4 text-emerald-400 font-semibold">
-              Presale Sold Out 🚀
-            </div>
+            <div className="mt-4 text-emerald-400 font-semibold">Presale Sold Out 🚀</div>
           )}
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="mt-16 text-center text-sm text-white/60">
-        Presale ends at{" "}
-        <span className="font-semibold text-indigo-400">
-          ${CONFIG.presale.batchPrice.toFixed(2)}
-        </span>{" "}
-        per MSHP.
-      </footer>
+      </main>
     </div>
   );
+}
+
+/* ================= Helpers (unchanged, minimal) ================= */
+function generateLinearTiers({ tiers, startPrice, endPrice, totalCapSOL }) {
+  const out = [];
+  const step = tiers > 1 ? (endPrice - startPrice) / (tiers - 1) : 0;
+  const perTierCap = Math.round((totalCapSOL / tiers) * 100) / 100;
+  let cumulative = 0;
+  for (let i = 0; i < tiers; i++) {
+    const price = Math.round(startPrice + step * i);
+    cumulative = Math.round((cumulative + perTierCap) * 100) / 100;
+    out.push({ pricePerSOL: price, capSOL: perTierCap, cumulativeSOL: cumulative });
+  }
+  return out;
+}
+
+function getTierState(currentRaisedSOL, tiers) {
+  let acc = 0;
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i];
+    const tierEnd = acc + t.capSOL;
+    if (currentRaisedSOL < tierEnd) {
+      return {
+        currentTierIndex: i,
+        tierRemainingSOL: tierEnd - currentRaisedSOL,
+        currentPrice: t.pricePerSOL,
+      };
+    }
+    acc = tierEnd;
+  }
+  const last = tiers[tiers.length - 1];
+  return { currentTierIndex: tiers.length - 1, tierRemainingSOL: 0, currentPrice: last.pricePerSOL };
+}
+
+function quoteTokensForContribution(currentRaisedSOL, amountSOL, tiers) {
+  let remaining = Math.max(0, amountSOL);
+  let accRaised = currentRaisedSOL;
+  let totalTokens = 0;
+  for (let i = 0; i < tiers.length && remaining > 0; i++) {
+    const t = tiers[i];
+    const tierEnd = tiers.slice(0, i + 1).reduce((a, x) => a + x.capSOL, 0);
+    if (accRaised >= tierEnd) continue;
+    const room = tierEnd - accRaised;
+    const take = Math.min(room, remaining);
+    totalTokens += take * t.pricePerSOL;
+    remaining -= take;
+    accRaised += take;
+  }
+  return { totalTokens };
+}
+
+function safeNum(n) {
+  const x = Number(n);
+  return Number.isFinite(x) ? x : 0;
 }
