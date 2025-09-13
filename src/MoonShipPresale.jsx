@@ -19,13 +19,13 @@ import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 // =============================================================
-// CONFIG (USD batches)
+// CONFIG
 // =============================================================
 const DEFAULT_BATCHES = generateLinearBatches({
   batches: 30,
-  startPrice: 0.05, // Launch price
-  endPrice: 0.20,   // Final price
-  totalCapUSD: 30_000_000, // Raise target
+  startPrice: 0.20,     // start high
+  endPrice: 0.05,       // end low (launch at $0.05)
+  totalCapUSD: 30_000_000,
 });
 
 const CONFIG = {
@@ -37,11 +37,15 @@ const CONFIG = {
   },
   presale: {
     hardCapUSD: DEFAULT_BATCHES.reduce((a, b) => a + b.capUSD, 0),
-    softCapUSD: 5_000_000,
+    softCapUSD: 500_000,
     liquidityPercent: 60,
-    accepted: ["USDC"],
-    initialRaisedUSD: 12_870_000,
+    accepted: ["USDC", "SOL"],
+    initialRaisedUSD: 12_874_500,
     batches: DEFAULT_BATCHES,
+  },
+  airdrop: {
+    dropISO: "2025-10-02T00:00:00Z",
+    note: "All allocations will be airdropped directly to contributor wallets. No claim is required.",
   },
   socials: {
     twitter: "https://x.com/yourmoonship",
@@ -86,24 +90,26 @@ function MoonShipInner() {
   const HARD_CAP = CONFIG.presale.hardCapUSD;
 
   const [raisedUSD, setRaisedUSD] = useState(CONFIG.presale.initialRaisedUSD);
-  const [contribution, setContribution] = useState(1000); // default $1000
+  const [contribution, setContribution] = useState(100); // USD
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
   const { connected, publicKey } = useWallet();
 
-  // Simple static background
+  // Background gradient
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#030014";
+    ctx.fillStyle = "rgba(3,0,20,0.9)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  // Batch state + quote
-  const { currentBatchIndex, batchRemainingUSD, currentPrice } =
-    getBatchState(raisedUSD, BATCHES);
+  // Presale contribution logic
+  const { currentBatchIndex, batchRemainingUSD, currentPrice } = getBatchState(
+    raisedUSD,
+    BATCHES
+  );
   const estQuote = quoteTokensForContribution(
     raisedUSD,
     safeNum(contribution),
@@ -150,25 +156,15 @@ function MoonShipInner() {
       <section className="mx-auto max-w-4xl px-4 py-12">
         <h1 className="text-4xl font-extrabold">MoonShip Presale</h1>
         <p className="mt-2 text-white/70">
-          Join the mission. Batch-based pricing. Locked liquidity. Airdropped tokens.
+          Join the mission. Batch pricing. Locked liquidity. Airdropped tokens.
         </p>
 
-        {/* Highlight Launch Price */}
-        <div className="mt-4 rounded-lg border-2 border-emerald-400 bg-emerald-900/40 p-4 text-center shadow-lg">
-          <span className="text-xl font-bold text-emerald-300">
-            🚀 Launch Price: $0.05 per MSHP
-          </span>
-          <div className="text-xs text-white/60 mt-1">
-            Final batch closes at $0.20
-          </div>
-        </div>
-
-        {/* Progress */}
         <div className="mt-6 rounded-xl bg-slate-900/60 border border-white/10 p-6">
+          {/* Progress Bar */}
           <div className="flex justify-between text-xs text-white/60">
             <span>Raised</span>
             <span>
-              ${raisedUSD.toLocaleString()} / ${HARD_CAP.toLocaleString()} USD
+              ${raisedUSD.toLocaleString()} / ${HARD_CAP.toLocaleString()}
             </span>
           </div>
           <div className="mt-2 h-3 bg-white/10 rounded-full overflow-hidden">
@@ -180,29 +176,11 @@ function MoonShipInner() {
           <div className="mt-1 text-right text-xs">{percent.toFixed(1)}%</div>
 
           {/* Batch Info */}
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div className="p-3 rounded-lg bg-slate-800/60 border border-white/10 text-center">
-              <div className="text-white/60">Current Batch</div>
-              <div className="font-semibold text-indigo-400">
-                {currentBatchIndex + 1} / {BATCHES.length}
-              </div>
-              <div className="text-xs text-white/50">
-                Price: ${currentPrice.toFixed(2)}
-              </div>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-800/60 border border-white/10 text-center">
-              <div className="text-white/60">Next Batch</div>
-              <div className="font-semibold text-emerald-400">
-                {currentBatchIndex + 2 > BATCHES.length
-                  ? "—"
-                  : `$${BATCHES[currentBatchIndex + 1].pricePerMSHP.toFixed(2)}`}
-              </div>
-              <div className="text-xs text-white/50">
-                {currentBatchIndex + 2 > BATCHES.length
-                  ? "Final batch reached"
-                  : "Price per MSHP"}
-              </div>
-            </div>
+          <div className="mt-4 text-sm">
+            Current Batch:{" "}
+            <span className="font-semibold text-indigo-400">
+              #{currentBatchIndex + 1} (${currentPrice.toFixed(2)}/MSHP)
+            </span>
           </div>
 
           {/* Contribute */}
@@ -253,7 +231,11 @@ function generateLinearBatches({ batches, startPrice, endPrice, totalCapUSD }) {
   for (let i = 0; i < batches; i++) {
     const price = +(startPrice + step * i).toFixed(4);
     cumulative = Math.round((cumulative + perBatchCap) * 100) / 100;
-    out.push({ pricePerMSHP: price, capUSD: perBatchCap, cumulativeUSD: cumulative });
+    out.push({
+      pricePerUSD: price,
+      capUSD: perBatchCap,
+      cumulativeUSD: cumulative,
+    });
   }
   return out;
 }
@@ -267,13 +249,17 @@ function getBatchState(currentRaisedUSD, batches) {
       return {
         currentBatchIndex: i,
         batchRemainingUSD: batchEnd - currentRaisedUSD,
-        currentPrice: b.pricePerMSHP,
+        currentPrice: b.pricePerUSD,
       };
     }
     acc = batchEnd;
   }
   const last = batches[batches.length - 1];
-  return { currentBatchIndex: batches.length - 1, batchRemainingUSD: 0, currentPrice: last.pricePerMSHP };
+  return {
+    currentBatchIndex: batches.length - 1,
+    batchRemainingUSD: 0,
+    currentPrice: last.pricePerUSD,
+  };
 }
 
 function quoteTokensForContribution(currentRaisedUSD, amountUSD, batches) {
@@ -286,7 +272,7 @@ function quoteTokensForContribution(currentRaisedUSD, amountUSD, batches) {
     if (accRaised >= batchEnd) continue;
     const room = batchEnd - accRaised;
     const take = Math.min(room, remaining);
-    totalTokens += take / b.pricePerMSHP;
+    totalTokens += take / b.pricePerUSD;
     remaining -= take;
     accRaised += take;
   }
