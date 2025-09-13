@@ -236,7 +236,6 @@ function getTierState(currentRaisedSOL, tiers) {
   let acc = 0;
   for (let i = 0; i < tiers.length; i++) {
     const t = tiers[i];
-    const tierStart = acc;
     const tierEnd = acc + t.capSOL;
     if (currentRaisedSOL < tierEnd) {
       return {
@@ -276,3 +275,4 @@ function safeNum(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x : 0;
 }
+
