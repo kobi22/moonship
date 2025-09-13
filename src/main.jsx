@@ -1,3 +1,4 @@
+// Polyfill Buffer
 import { Buffer } from "buffer";
 window.Buffer = Buffer;
 
@@ -22,7 +23,6 @@ import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const network = WalletAdapterNetwork.Mainnet;
-// Optional: use your own RPC via Vercel env VITE_SOLANA_RPC; falls back to cluster
 const endpoint = import.meta.env.VITE_SOLANA_RPC || clusterApiUrl(network);
 
 const wallets = [
@@ -33,11 +33,14 @@ const wallets = [
 ];
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <ConnectionProvider endpoint={endpoint}>
-    <WalletProvider wallets={wallets} autoConnect>
-      <WalletModalProvider>
-        <MoonShipPresale />
-      </WalletModalProvider>
-    </WalletProvider>
-  </ConnectionProvider>
+  <React.StrictMode>
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <MoonShipPresale />
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  </React.StrictMode>
 );
+
