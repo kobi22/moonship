@@ -13,25 +13,35 @@ import {
   SolflareWalletAdapter,
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
+  TorusWalletAdapter,
+  GlowWalletAdapter,
+  ExodusWalletAdapter,
+  BraveWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-// ---------------- CONFIG ----------------
+// ===== Mock config =====
+const DEFAULT_TIERS = generateLinearTiers({
+  tiers: 30,
+  startPrice: 120000,
+  endPrice: 80000,
+  totalCapUSDC: 3000,
+});
+
 const CONFIG = {
   token: {
     name: "MoonShip",
     symbol: "MSHP",
-    decimals: 9,
+    decimals: 6,
     totalSupply: 1_000_000_000,
   },
   presale: {
-    hardCapUSD: 15_000_000,
-    softCapUSD: 500_000,
-    batchPrice: 0.05, // $0.05 launch
-    initialRaisedUSD: 0, // mock
-    accepted: ["USDC", "SOL"],
+    hardCapUSDC: DEFAULT_TIERS.reduce((a, t) => a + t.capUSDC, 0),
+    softCapUSDC: 500,
+    initialRaisedUSDC: 1287.45,
+    tiers: DEFAULT_TIERS,
   },
   socials: {
     twitter: "https://x.com/yourmoonship",
@@ -40,7 +50,15 @@ const CONFIG = {
   },
 };
 
-// ---------------- Wrapper ----------------
+// ===== Format helper =====
+function formatUSDC(n) {
+  return `$${n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+// ===== Top-level providers =====
 export default function MoonShipPresale() {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = clusterApiUrl(network);
@@ -51,6 +69,10 @@ export default function MoonShipPresale() {
       new SolflareWalletAdapter({ network }),
       new CoinbaseWalletAdapter(),
       new LedgerWalletAdapter(),
+      new TorusWalletAdapter(),
+      new GlowWalletAdapter(),
+      new ExodusWalletAdapter(),
+      new BraveWalletAdapter(),
     ],
     [network]
   );
@@ -66,11 +88,15 @@ export default function MoonShipPresale() {
   );
 }
 
-// ---------------- UI ----------------
+// ===== Main Presale UI =====
 function MoonShipInner() {
-  const HARD_CAP = CONFIG.presale.hardCapUSD;
-  const [raisedUSD, setRaisedUSD] = useState(CONFIG.presale.initialRaisedUSD);
-  const [contribution, setContribution] = useState(100);
+  const TIERS = CONFIG.presale.tiers;
+  const HARD_CAP = CONFIG.presale.hardCapUSDC;
+  const [raisedUSDC, setRaisedUSDC] = useState(CONFIG.presale.initialRaisedUSDC);
+
+  // store contribution as number + formatted string
+  const [contribution, setContribution] = useState(1);
+  const [contributionDisplay, setContributionDisplay] = useState(formatUSDC(1));
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
   const { connected, publicKey } = useWallet();
@@ -105,21 +131,38 @@ function MoonShipInner() {
     draw();
   }, []);
 
-  const percent = Math.min(100, (raisedUSD / HARD_CAP) * 100);
-  const soldOut = raisedUSD >= HARD_CAP;
+  // Presale logic
+  const { currentTierIndex, currentPrice } = getTierState(raisedUSDC, TIERS);
+  const estQuote = quoteTokensForContribution(
+    raisedUSDC,
+    safeNum(contribution),
+    TIERS
+  );
+
+  const percent = Math.min(100, (raisedUSDC / HARD_CAP) * 100);
+  const soldOut = raisedUSDC >= HARD_CAP;
 
   function handleContribute() {
     if (!connected || !publicKey) return alert("Connect your wallet first.");
-    const add = Number(contribution);
-    if (!isFinite(add) || add <= 0) return;
-    const remaining = Math.max(0, HARD_CAP - raisedUSD);
+    const add = safeNum(contribution);
+    if (!Number.isFinite(add) || add <= 0) return;
+    const remaining = Math.max(0, HARD_CAP - raisedUSDC);
     const delta = Math.min(add, remaining);
     if (delta <= 0) return alert("Presale hard cap reached.");
+    const q = quoteTokensForContribution(raisedUSDC, delta, TIERS);
+    setRaisedUSDC((x) => +(x + delta).toFixed(2));
+    setUserAllocationTokens((t) => +(t + q.totalTokens).toFixed(0));
+  }
 
-    setRaisedUSD((x) => x + delta);
-    setUserAllocationTokens(
-      (t) => t + Math.floor(delta / CONFIG.presale.batchPrice)
-    );
+  function handleContributionChange(e) {
+    const raw = e.target.value.replace(/[^0-9.]/g, "");
+    const num = parseFloat(raw) || 0;
+    setContribution(num);
+    setContributionDisplay(formatUSDC(num));
+  }
+
+  function handleContributionBlur() {
+    setContributionDisplay(formatUSDC(contribution));
   }
 
   return (
@@ -151,8 +194,8 @@ function MoonShipInner() {
           Join the MoonShip Presale
         </h2>
         <p className="mt-3 text-lg text-gray-300">
-          Raising <b>${HARD_CAP.toLocaleString()}</b> — Launch price:{" "}
-          <b>${CONFIG.presale.batchPrice.toFixed(2)}</b>.
+          Raising <b>{formatUSDC(HARD_CAP)}</b> — Current price:{" "}
+          <b>{currentPrice.toLocaleString()} MSHP/USDC</b>.
         </p>
       </section>
 
@@ -162,7 +205,7 @@ function MoonShipInner() {
           <div className="flex justify-between text-xs text-white/60 mb-2">
             <span>Raised</span>
             <span>
-              ${raisedUSD.toLocaleString()} / ${HARD_CAP.toLocaleString()}
+              {formatUSDC(raisedUSDC)} / {formatUSDC(HARD_CAP)}
             </span>
           </div>
           <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-1">
@@ -175,18 +218,19 @@ function MoonShipInner() {
 
           {!soldOut ? (
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-              <div className="sm:col-span-2 text-left">
-                <label className="text-xs text-white/60">Amount (USD)</label>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-white/60">Amount (USDC)</label>
                 <input
-                  type="number"
-                  value={contribution}
-                  onChange={(e) => setContribution(Number(e.target.value))}
-                  className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  type="text"
+                  value={contributionDisplay}
+                  onChange={handleContributionChange}
+                  onBlur={handleContributionBlur}
+                  className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2"
                 />
                 <div className="mt-2 text-sm">
                   You’ll receive ~{" "}
                   <span className="font-semibold">
-                    {userAllocationTokens.toLocaleString()}
+                    {estQuote.totalTokens.toLocaleString()}
                   </span>{" "}
                   MSHP
                 </div>
@@ -208,12 +252,70 @@ function MoonShipInner() {
 
       {/* Footer */}
       <footer className="mt-16 text-center text-sm text-white/50 pb-8">
-        Presale ends at{" "}
-        <span className="font-semibold text-indigo-400">
-          ${CONFIG.presale.batchPrice.toFixed(2)}
-        </span>{" "}
-        per MSHP.
+        Presale price progression across <b>{TIERS.length}</b> tiers.
       </footer>
     </div>
   );
+}
+
+/* ================= Helpers ================= */
+function generateLinearTiers({ tiers, startPrice, endPrice, totalCapUSDC }) {
+  const out = [];
+  const step = tiers > 1 ? (endPrice - startPrice) / (tiers - 1) : 0;
+  const perTierCap = Math.round((totalCapUSDC / tiers) * 100) / 100;
+  let cumulative = 0;
+  for (let i = 0; i < tiers; i++) {
+    const price = Math.round(startPrice + step * i);
+    cumulative = Math.round((cumulative + perTierCap) * 100) / 100;
+    out.push({
+      pricePerUSDC: price,
+      capUSDC: perTierCap,
+      cumulativeUSDC: cumulative,
+    });
+  }
+  return out;
+}
+
+function getTierState(currentRaisedUSDC, tiers) {
+  let acc = 0;
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i];
+    const tierEnd = acc + t.capUSDC;
+    if (currentRaisedUSDC < tierEnd) {
+      return {
+        currentTierIndex: i,
+        tierRemainingUSDC: tierEnd - currentRaisedUSDC,
+        currentPrice: t.pricePerUSDC,
+      };
+    }
+    acc = tierEnd;
+  }
+  const last = tiers[tiers.length - 1];
+  return {
+    currentTierIndex: tiers.length - 1,
+    tierRemainingUSDC: 0,
+    currentPrice: last.pricePerUSDC,
+  };
+}
+
+function quoteTokensForContribution(currentRaisedUSDC, amountUSDC, tiers) {
+  let remaining = Math.max(0, amountUSDC);
+  let accRaised = currentRaisedUSDC;
+  let totalTokens = 0;
+  for (let i = 0; i < tiers.length && remaining > 0; i++) {
+    const t = tiers[i];
+    const tierEnd = tiers.slice(0, i + 1).reduce((a, x) => a + x.capUSDC, 0);
+    if (accRaised >= tierEnd) continue;
+    const room = tierEnd - accRaised;
+    const take = Math.min(room, remaining);
+    totalTokens += take * t.pricePerUSDC;
+    remaining -= take;
+    accRaised += take;
+  }
+  return { totalTokens };
+}
+
+function safeNum(n) {
+  const x = Number(n);
+  return Number.isFinite(x) ? x : 0;
 }
