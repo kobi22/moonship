@@ -30,7 +30,7 @@ const CONFIG = {
     hardCapUSD: 15_000_000,
     softCapUSD: 500_000,
     batchPrice: 0.05, // $0.05 launch
-    initialRaisedUSD: 1_287_450, // mock
+    initialRaisedUSD: 0, // mock
     accepted: ["USDC", "SOL"],
   },
   socials: {
