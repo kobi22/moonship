@@ -26,9 +26,9 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 // ===== Mock config =====
 const DEFAULT_TIERS = generateLinearTiers({
   tiers: 30,
-  startPrice: 120000,
+  startPrice: 0,
   endPrice: 80000,
-  totalCapUSDC: 3000,
+  totalCapUSDC: 30000000,
 });
 
 const CONFIG = {
@@ -41,7 +41,7 @@ const CONFIG = {
   presale: {
     hardCapUSDC: DEFAULT_TIERS.reduce((a, t) => a + t.capUSDC, 0),
     softCapUSDC: 500,
-    initialRaisedUSDC: 1287.45,
+    initialRaisedUSDC: 0,
     tiers: DEFAULT_TIERS,
   },
   socials: {
