@@ -76,7 +76,7 @@ function MoonShipInner() {
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
   const { connected, publicKey } = useWallet();
 
-  // Background (solid color)
+  // Simple static background
   const canvasRef = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
@@ -88,8 +88,17 @@ function MoonShipInner() {
     ctx.fillRect(0, 0, c.width, c.height);
   }, []);
 
-  const { currentPrice } = getTierState(raisedSOL, TIERS);
-  const estQuote = quoteTokensForContribution(raisedSOL, safeNum(contribution), TIERS);
+  // Presale contribution logic
+  const { currentTierIndex, tierRemainingSOL, currentPrice } = getTierState(
+    raisedSOL,
+    TIERS
+  );
+  const estQuote = quoteTokensForContribution(
+    raisedSOL,
+    safeNum(contribution),
+    TIERS
+  );
+
   const percent = Math.min(100, (raisedSOL / HARD_CAP) * 100);
   const soldOut = raisedSOL >= HARD_CAP;
 
@@ -109,36 +118,30 @@ function MoonShipInner() {
     <div className="relative min-h-screen text-white">
       <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
 
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-black/40 backdrop-blur border-b border-white/10">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+      {/* Nav */}
+      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40">
+        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 font-bold">🚀 MoonShip</div>
           <div className="flex items-center gap-3">
-            <span className="text-lg font-bold">🚀 MoonShip</span>
-            <span className="text-white/60 text-sm">$MSHP</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <a className="text-white/70 hover:text-white text-sm" href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">Twitter</a>
-            <a className="text-white/70 hover:text-white text-sm" href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">Telegram</a>
-
-            {/* The button below opens the modal with the wallets we registered above */}
-            <WalletMultiButton className="!bg-indigo-600 hover:!bg-indigo-700 !rounded-xl !px-4 !py-2 !text-sm !font-semibold" />
-
-            {/* Helper text to show which wallets are available */}
-            <div className="hidden md:block text-xs text-white/60">
-              Supported: Phantom · Solflare · Coinbase · Ledger
-            </div>
+            <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
+              X
+            </a>
+            <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
+              TG
+            </a>
+            <WalletMultiButton />
           </div>
         </div>
       </header>
 
-      {/* Body */}
-      <main className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="text-4xl font-extrabold tracking-tight">MoonShip Presale</h1>
+      {/* Presale */}
+      <section className="mx-auto max-w-4xl px-4 py-12">
+        <h1 className="text-4xl font-extrabold">MoonShip Presale</h1>
         <p className="mt-2 text-white/70">
           Minimal, clean presale. Tiered pricing. Liquidity locked. Airdropped tokens.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-6">
+        <div className="mt-6 rounded-xl bg-slate-900/60 border border-white/10 p-6">
           <div className="flex justify-between text-xs text-white/60">
             <span>Raised</span>
             <span>{raisedSOL.toLocaleString()} / {HARD_CAP} SOL</span>
@@ -156,8 +159,7 @@ function MoonShipInner() {
                   type="number"
                   value={contribution}
                   onChange={(e) => setContribution(Number(e.target.value))}
-                  className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-3 outline-none focus:ring-2 focus:ring-indigo-400/50"
-                  placeholder="1.0"
+                  className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2"
                 />
                 <div className="mt-2 text-[12px] text-white/60">
                   You’ll receive ~ <span className="text-white">{estQuote.totalTokens.toLocaleString()}</span> MSHP
@@ -165,7 +167,7 @@ function MoonShipInner() {
               </div>
               <button
                 onClick={handleContribute}
-                className="w-full rounded-xl px-4 py-3 font-semibold bg-indigo-600 hover:bg-indigo-700 shadow"
+                className="rounded-lg bg-indigo-500 hover:bg-indigo-600 px-4 py-2 font-semibold"
               >
                 Contribute
               </button>
@@ -174,7 +176,7 @@ function MoonShipInner() {
             <div className="mt-4 text-emerald-400 font-semibold">Presale Sold Out 🚀</div>
           )}
         </div>
-      </main>
+      </section>
     </div>
   );
 }

@@ -32,6 +32,7 @@ const wallets = [
 ];
 
 ReactDOM.createRoot(document.getElementById("root")).render(
+<<<<<<< HEAD
   <React.StrictMode>
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
@@ -42,3 +43,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ConnectionProvider>
   </React.StrictMode>
 );
+=======
+  <ConnectionProvider endpoint={endpoint}>
+    <WalletProvider wallets={wallets} autoConnect>
+      <WalletModalProvider>
+        <MoonShipPresale />
+      </WalletModalProvider>
+    </WalletProvider>
+  </ConnectionProvider>
+);
+>>>>>>> d9619fb7ffb21189bb965f206394f692e73c7a19
