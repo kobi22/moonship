@@ -1,12 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), vitePluginTailwind()],
-  define: {
-    global: "globalThis", // Fix Buffer issue
-  },
-  optimizeDeps: {
-    include: ["buffer"],
-  },
+  plugins: [react()],
 });
