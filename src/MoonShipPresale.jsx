@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -18,9 +18,9 @@ import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-// ----------------------------------------
+// =============================================================
 // CONFIG
-// ----------------------------------------
+// =============================================================
 const CONFIG = {
   token: {
     name: "MoonShip",
@@ -29,10 +29,10 @@ const CONFIG = {
     totalSupply: 1_000_000_000,
   },
   presale: {
-    hardCapUSD: 30_000_000,
+    hardCapUSD: 30_000_000, // raise goal
     softCapUSD: 500_000,
-    initialRaisedUSD: 12_874_500,
-    batchPrice: 0.05, // Ends at $0.05
+    batchPrice: 0.05, // presale ends at $0.05
+    initialRaisedUSD: 1_287_450, // mock starting point
     accepted: ["USDC", "SOL"],
   },
   socials: {
@@ -41,9 +41,9 @@ const CONFIG = {
   },
 };
 
-// ----------------------------------------
-// Wallet Wrapper
-// ----------------------------------------
+// =============================================================
+// Wallet Providers wrapper
+// =============================================================
 export default function MoonShipPresale() {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = clusterApiUrl(network);
@@ -69,23 +69,19 @@ export default function MoonShipPresale() {
   );
 }
 
-// ----------------------------------------
-// UI
-// ----------------------------------------
+// =============================================================
+// Inner Component (UI)
+// =============================================================
 function MoonShipInner() {
-  const { connected, publicKey } = useWallet();
+  const HARD_CAP = CONFIG.presale.hardCapUSD;
 
   const [raisedUSD, setRaisedUSD] = useState(CONFIG.presale.initialRaisedUSD);
-  const [contribution, setContribution] = useState(1000); // default in USD
-  const [userTokens, setUserTokens] = useState(0);
+  const [contribution, setContribution] = useState(1000);
+  const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
-  const percent = Math.min(
-    100,
-    (raisedUSD / CONFIG.presale.hardCapUSD) * 100
-  );
-  const soldOut = raisedUSD >= CONFIG.presale.hardCapUSD;
+  const { connected, publicKey } = useWallet();
 
-  // Starfield Background
+  // Simple animated star background
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -94,7 +90,7 @@ function MoonShipInner() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    const stars = Array.from({ length: 100 }, () => ({
+    const stars = Array.from({ length: 120 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       r: Math.random() * 1.2,
@@ -115,66 +111,61 @@ function MoonShipInner() {
     draw();
   }, []);
 
-  // Handle Contribution
+  const percent = Math.min(100, (raisedUSD / HARD_CAP) * 100);
+  const soldOut = raisedUSD >= HARD_CAP;
+
   function handleContribute() {
     if (!connected || !publicKey) return alert("Connect your wallet first.");
     const add = Number(contribution);
     if (!isFinite(add) || add <= 0) return;
-    const remaining = Math.max(0, CONFIG.presale.hardCapUSD - raisedUSD);
+    const remaining = Math.max(0, HARD_CAP - raisedUSD);
     const delta = Math.min(add, remaining);
     if (delta <= 0) return alert("Presale hard cap reached.");
     setRaisedUSD((x) => x + delta);
-    setUserTokens((t) => t + Math.floor(delta / CONFIG.presale.batchPrice));
+    setUserAllocationTokens(
+      (t) => t + Math.floor(delta / CONFIG.presale.batchPrice)
+    );
   }
 
   return (
-    <div className="relative min-h-screen text-white font-sans overflow-hidden">
+    <div className="relative min-h-screen text-white bg-black overflow-hidden">
       {/* Background */}
       <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
 
       {/* Nav */}
-      <header className="sticky top-0 z-20 bg-black/40 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-          <h1 className="font-bold text-xl tracking-wide">🚀 MoonShip</h1>
-          <div className="flex items-center gap-4">
-            <a
-              href={CONFIG.socials.twitter}
-              target="_blank"
-              className="hover:text-sky-400"
-            >
+      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40">
+        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 font-bold">🚀 MoonShip</div>
+          <div className="flex items-center gap-3">
+            <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
               Twitter
             </a>
-            <a
-              href={CONFIG.socials.telegram}
-              target="_blank"
-              className="hover:text-sky-400"
-            >
+            <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
               Telegram
             </a>
-            <WalletMultiButton className="!bg-indigo-600 hover:!bg-indigo-700 text-white px-4 py-2 rounded-md" />
+            <WalletMultiButton />
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-3xl mx-auto text-center py-16 px-6">
-        <h2 className="text-5xl font-extrabold font-[Orbitron] bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400">
-          Join the MoonShip Presale
-        </h2>
-        <p className="mt-4 text-lg text-gray-300">
-          Invest early. Tiered pricing. Liquidity locked. Tokens airdropped
-          automatically.
+      {/* Presale */}
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <h1 className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300">
+          MoonShip Presale
+        </h1>
+        <p className="mt-4 text-white/70">
+          Raising <b>${HARD_CAP.toLocaleString()}</b>. Ends when price reaches{" "}
+          <b>${CONFIG.presale.batchPrice.toFixed(2)}</b>.
         </p>
       </section>
 
       {/* Presale Card */}
       <section className="max-w-2xl mx-auto px-6">
-        <div className="bg-black/60 border border-white/10 rounded-xl shadow-lg p-6">
-          <div className="flex justify-between text-sm text-gray-400 mb-2">
+        <div className="bg-slate-900/70 rounded-xl shadow border border-white/10 p-6">
+          <div className="flex justify-between text-sm text-white/60 mb-2">
             <span>Raised</span>
             <span>
-              ${raisedUSD.toLocaleString()} / $
-              {CONFIG.presale.hardCapUSD.toLocaleString()}
+              ${raisedUSD.toLocaleString()} / ${HARD_CAP.toLocaleString()}
             </span>
           </div>
           <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -183,14 +174,12 @@ function MoonShipInner() {
               style={{ width: `${percent}%` }}
             />
           </div>
-          <div className="mt-2 text-right text-sm font-medium text-gray-300">
-            {percent.toFixed(1)}%
-          </div>
+          <div className="mt-1 text-right text-xs">{percent.toFixed(1)}%</div>
 
           {!soldOut ? (
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
               <div className="sm:col-span-2 text-left">
-                <label className="text-sm text-gray-400">Amount (USD)</label>
+                <label className="text-xs text-white/60">Amount (USD)</label>
                 <input
                   type="number"
                   value={contribution}
@@ -199,8 +188,8 @@ function MoonShipInner() {
                 />
                 <div className="mt-2 text-sm">
                   You’ll receive ~{" "}
-                  <span className="font-semibold text-sky-300">
-                    {userTokens.toLocaleString()}
+                  <span className="font-semibold">
+                    {userAllocationTokens.toLocaleString()}
                   </span>{" "}
                   MSHP
                 </div>
@@ -221,10 +210,14 @@ function MoonShipInner() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-white/10 py-8 text-center text-sm text-gray-400">
+      <footer className="mt-16 text-center text-sm text-white/60">
         Presale ends at{" "}
-        <span className="font-semibold text-sky-400">$0.05</span> per MSHP.
+        <span className="font-semibold text-indigo-400">
+          ${CONFIG.presale.batchPrice.toFixed(2)}
+        </span>{" "}
+        per MSHP.
       </footer>
     </div>
   );
 }
+
