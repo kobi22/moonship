@@ -90,11 +90,11 @@ function MoonShipInner() {
 
   // Presale contribution logic
   const { currentTierIndex, tierRemainingSOL, currentPrice } = getTierState(
-    raisedSOL,
+    raisedUSD,
     TIERS
   );
   const estQuote = quoteTokensForContribution(
-    raisedSOL,
+    raisedUSD,
     safeNum(contribution),
     TIERS
   );
