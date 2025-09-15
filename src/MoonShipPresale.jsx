@@ -16,7 +16,6 @@ import {
   TorusWalletAdapter,
   GlowWalletAdapter,
   ExodusWalletAdapter,
-  BraveWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
@@ -67,7 +66,7 @@ export default function MoonShipPresale() {
       new TorusWalletAdapter(),
       new GlowWalletAdapter(),
       new ExodusWalletAdapter(),
-      new BraveWalletAdapter(),
+      
     ],
     [network]
   );
