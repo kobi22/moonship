@@ -31,12 +31,7 @@ const DEFAULT_TIERS = generateLinearTiers({
 });
 
 const CONFIG = {
-  token: {
-    name: "MoonShip",
-    symbol: "MSHP",
-    decimals: 6,
-    totalSupply: 1_000_000_000,
-  },
+  token: { name: "MoonShip", symbol: "MSHP", decimals: 9, totalSupply: 1_000_000_000 },
   presale: {
     hardCapUSDC: DEFAULT_TIERS.reduce((a, t) => a + t.capUSDC, 0),
     softCapUSDC: 500,
@@ -58,7 +53,7 @@ function formatUSDC(n) {
   })}`;
 }
 
-// ===== Top-level providers =====
+// ===== Top-level providers (adds wallets to the connect button modal) =====
 export default function MoonShipPresale() {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = clusterApiUrl(network);
@@ -91,17 +86,14 @@ export default function MoonShipPresale() {
 // ===== Main Presale UI =====
 function MoonShipInner() {
   const TIERS = CONFIG.presale.tiers;
-  const HARD_CAP = CONFIG.presale.hardCapUSDC;
-  const [raisedUSDC, setRaisedUSDC] = useState(CONFIG.presale.initialRaisedUSDC);
-
-  // store contribution as number + formatted string
+  const HARD_CAP = CONFIG.presale.hardCapSOL;
+  const [raisedSOL, setRaisedSOL] = useState(CONFIG.presale.initialRaisedSOL);
   const [contribution, setContribution] = useState(1);
-  const [contributionDisplay, setContributionDisplay] = useState(formatUSDC(1));
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
   const { connected, publicKey } = useWallet();
 
-  // Background starfield
+  // Simple static background
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -131,8 +123,11 @@ function MoonShipInner() {
     draw();
   }, []);
 
-  // Presale logic
-  const { currentTierIndex, currentPrice } = getTierState(raisedUSDC, TIERS);
+  // Presale contribution logic
+  const { currentTierIndex, tierRemainingSOL, currentPrice } = getTierState(
+    raisedSOL,
+    TIERS
+  );
   const estQuote = quoteTokensForContribution(
     raisedUSDC,
     safeNum(contribution),
@@ -152,17 +147,6 @@ function MoonShipInner() {
     const q = quoteTokensForContribution(raisedUSDC, delta, TIERS);
     setRaisedUSDC((x) => +(x + delta).toFixed(2));
     setUserAllocationTokens((t) => +(t + q.totalTokens).toFixed(0));
-  }
-
-  function handleContributionChange(e) {
-    const raw = e.target.value.replace(/[^0-9.]/g, "");
-    const num = parseFloat(raw) || 0;
-    setContribution(num);
-    setContributionDisplay(formatUSDC(num));
-  }
-
-  function handleContributionBlur() {
-    setContributionDisplay(formatUSDC(contribution));
   }
 
   return (
@@ -204,17 +188,12 @@ function MoonShipInner() {
         <div className="bg-slate-900/70 border border-white/10 rounded-xl p-6">
           <div className="flex justify-between text-xs text-white/60 mb-2">
             <span>Raised</span>
-            <span>
-              {formatUSDC(raisedUSDC)} / {formatUSDC(HARD_CAP)}
-            </span>
+            <span>{raisedSOL.toLocaleString()} / {HARD_CAP} SOL</span>
           </div>
-          <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-1">
-            <div
-              className="h-3 bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400"
-              style={{ width: `${percent}%` }}
-            />
+          <div className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-3 bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400" style={{ width: `${percent}%` }} />
           </div>
-          <div className="text-right text-xs">{percent.toFixed(1)}%</div>
+          <div className="mt-1 text-right text-[11px] text-white/60">{percent.toFixed(1)}%</div>
 
           {!soldOut ? (
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
@@ -227,12 +206,8 @@ function MoonShipInner() {
                   onBlur={handleContributionBlur}
                   className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2"
                 />
-                <div className="mt-2 text-sm">
-                  You’ll receive ~{" "}
-                  <span className="font-semibold">
-                    {estQuote.totalTokens.toLocaleString()}
-                  </span>{" "}
-                  MSHP
+                <div className="mt-2 text-[12px] text-white/60">
+                  You’ll receive ~ <span className="text-white">{estQuote.totalTokens.toLocaleString()}</span> MSHP
                 </div>
               </div>
               <button
