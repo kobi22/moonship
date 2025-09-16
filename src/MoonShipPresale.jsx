@@ -21,7 +21,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 /* ===== Mock config ===== */
 const DEFAULT_TIERS = generateLinearTiers({
   tiers: 30,
-  startPrice: 0.01, // start at $0.01 per token
+  startPrice: 0.0001, // start at $0.01 per token
   endPrice: 0.05,   // final price = $0.05 per token
   totalCapUSDC: 15_000_000, // 15 million raise target
 });
