@@ -12,6 +12,7 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
   CoinbaseWalletAdapter,
+  LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
@@ -20,9 +21,9 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 /* ===== Mock config ===== */
 const DEFAULT_TIERS = generateLinearTiers({
   tiers: 30,
-  startPrice: 120000,
-  endPrice: 80000,
-  totalCapUSDC: 3000,
+  startPrice: 0.01, // start at $0.01 per token
+  endPrice: 0.05,   // final price = $0.05 per token
+  totalCapUSDC: 15_000_000, // 15 million raise target
 });
 
 const CONFIG = {
@@ -33,9 +34,9 @@ const CONFIG = {
     totalSupply: 1_000_000_000,
   },
   presale: {
-    hardCapUSDC: DEFAULT_TIERS.reduce((a, t) => a + t.capUSDC, 0),
-    softCapUSDC: 500,
-    initialRaisedUSDC: 1287.45,
+    hardCapUSDC: 15_000_000,
+    softCapUSDC: 500_000,
+    initialRaisedUSDC: 1_250_000, // mock starting raised amount
     tiers: DEFAULT_TIERS,
   },
   socials: {
@@ -62,6 +63,7 @@ export default function MoonShipPresale() {
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter({ network }),
       new CoinbaseWalletAdapter(),
+      new LedgerWalletAdapter(),
     ],
     [network]
   );
@@ -82,8 +84,7 @@ function MoonShipInner() {
   const TIERS = CONFIG.presale.tiers;
   const HARD_CAP = CONFIG.presale.hardCapUSDC;
   const [raisedUSDC, setRaisedUSDC] = useState(CONFIG.presale.initialRaisedUSDC);
-  const [contribution, setContribution] = useState(1);
-  const [contributionDisplay, setContributionDisplay] = useState(formatUSDC(1));
+  const [contribution, setContribution] = useState(1000); // default mock
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
   const { connected, publicKey } = useWallet();
@@ -97,7 +98,7 @@ function MoonShipInner() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    const stars = Array.from({ length: 150 }, () => ({
+    const stars = Array.from({ length: 120 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       r: Math.random() * 1.2,
@@ -141,30 +142,10 @@ function MoonShipInner() {
     setUserAllocationTokens((t) => +(t + q.totalTokens).toFixed(0));
   }
 
-  function handleContributionChange(e) {
-    const raw = e.target.value.replace(/[^0-9.]/g, "");
-    const num = parseFloat(raw) || 0;
-    setContribution(num);
-    setContributionDisplay(formatUSDC(num));
-  }
-
-  function handleContributionBlur() {
-    setContributionDisplay(formatUSDC(contribution));
-  }
-
   return (
     <div className="relative min-h-screen text-white overflow-hidden">
       {/* Background */}
       <canvas ref={canvasRef} className="fixed inset-0 -z-40" />
-
-      {/* Floating Mothership */}
-      <div className="fixed inset-0 flex items-center justify-center -z-30 pointer-events-none">
-        <img
-          src="/mothership.png"
-          alt="MoonShip Mothership"
-          className="w-[70%] max-w-6xl opacity-70 animate-float animate-slow-rotate drop-shadow-[0_0_60px_rgba(99,102,241,0.6)]"
-        />
-      </div>
 
       {/* NAVBAR */}
       <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40 border-b border-indigo-500/20">
@@ -173,20 +154,10 @@ function MoonShipInner() {
             🚀 MoonShip
           </div>
           <div className="flex items-center gap-6">
-            <a
-              href={CONFIG.socials.twitter}
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-sky-400 transition"
-            >
+            <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
               Twitter
             </a>
-            <a
-              href={CONFIG.socials.telegram}
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-sky-400 transition"
-            >
+            <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
               Telegram
             </a>
             <WalletMultiButton className="!bg-indigo-600 !hover:bg-indigo-700 rounded-lg shadow-[0_0_20px_rgba(99,102,241,0.5)]" />
@@ -195,22 +166,21 @@ function MoonShipInner() {
       </header>
 
       {/* HERO */}
-      <section className="relative z-10 max-w-3xl mx-auto text-center py-24 px-6">
+      <section className="relative z-10 max-w-3xl mx-auto text-center py-20 px-6">
         <h1 className="text-6xl font-extrabold tracking-tight">
           <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
             MoonShip Presale
           </span>
         </h1>
         <p className="mt-4 text-lg text-gray-300">
-          Join the interstellar journey 🌌 <br />
-          Raising <b>{formatUSDC(HARD_CAP)}</b> — Current price:{" "}
-          <b>{currentPrice.toLocaleString()} MSHP/USDC</b>.
+          Raising <b>{formatUSDC(HARD_CAP)}</b> <br />
+          Final price per token: <b>$0.05</b>
         </p>
       </section>
 
       {/* PRESALE CARD */}
       <section className="relative z-10 max-w-xl mx-auto px-6">
-        <div className="bg-slate-900/70 backdrop-blur border border-indigo-500/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(99,102,241,0.3)]">
+        <div className="bg-slate-900/70 backdrop-blur border border-indigo-500/20 rounded-2xl p-8 shadow-lg">
           <div className="flex justify-between text-xs text-white/60 mb-2">
             <span>Raised</span>
             <span>
@@ -232,10 +202,9 @@ function MoonShipInner() {
               <div className="sm:col-span-2">
                 <label className="text-xs text-white/60">Amount (USDC)</label>
                 <input
-                  type="text"
-                  value={contributionDisplay}
-                  onChange={handleContributionChange}
-                  onBlur={handleContributionBlur}
+                  type="number"
+                  value={contribution}
+                  onChange={(e) => setContribution(Number(e.target.value))}
                   className="mt-2 w-full rounded-lg bg-slate-800/70 px-3 py-2 
                              border border-indigo-500/30 focus:outline-none 
                              focus:ring-2 focus:ring-indigo-500"
@@ -252,9 +221,7 @@ function MoonShipInner() {
                 onClick={handleContribute}
                 className="rounded-xl px-6 py-3 font-semibold text-lg 
                            bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
-                           shadow-[0_0_20px_rgba(99,102,241,0.6)] 
-                           hover:scale-105 hover:shadow-[0_0_40px_rgba(99,102,241,0.9)] 
-                           transition-all duration-300"
+                           hover:scale-105 transition-all duration-300"
               >
                 Contribute
               </button>
@@ -266,24 +233,19 @@ function MoonShipInner() {
           )}
         </div>
       </section>
-
-      {/* FOOTER */}
-      <footer className="relative z-10 mt-20 text-center text-sm text-white/50 pb-12">
-        Presale price progression across <b>{TIERS.length}</b> tiers.
-      </footer>
     </div>
   );
 }
 
-/* ================= Helpers ================= */
+/* ===== Helpers ===== */
 function generateLinearTiers({ tiers, startPrice, endPrice, totalCapUSDC }) {
   const out = [];
   const step = tiers > 1 ? (endPrice - startPrice) / (tiers - 1) : 0;
-  const perTierCap = Math.round((totalCapUSDC / tiers) * 100) / 100;
+  const perTierCap = totalCapUSDC / tiers;
   let cumulative = 0;
   for (let i = 0; i < tiers; i++) {
-    const price = Math.round(startPrice + step * i);
-    cumulative = Math.round((cumulative + perTierCap) * 100) / 100;
+    const price = +(startPrice + step * i).toFixed(4);
+    cumulative = +(cumulative + perTierCap).toFixed(2);
     out.push({
       pricePerUSDC: price,
       capUSDC: perTierCap,
@@ -308,11 +270,7 @@ function getTierState(currentRaisedUSDC, tiers) {
     acc = tierEnd;
   }
   const last = tiers[tiers.length - 1];
-  return {
-    currentTierIndex: tiers.length - 1,
-    tierRemainingUSDC: 0,
-    currentPrice: last.pricePerUSDC,
-  };
+  return { currentTierIndex: tiers.length - 1, tierRemainingUSDC: 0, currentPrice: last.pricePerUSDC };
 }
 
 function quoteTokensForContribution(currentRaisedUSDC, amountUSDC, tiers) {
@@ -325,7 +283,7 @@ function quoteTokensForContribution(currentRaisedUSDC, amountUSDC, tiers) {
     if (accRaised >= tierEnd) continue;
     const room = tierEnd - accRaised;
     const take = Math.min(room, remaining);
-    totalTokens += take * t.pricePerUSDC;
+    totalTokens += take / (t.pricePerUSDC || 1);
     remaining -= take;
     accRaised += take;
   }
