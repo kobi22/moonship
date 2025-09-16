@@ -45,7 +45,7 @@ const CONFIG = {
   },
 };
 
-/* ===== Format helper ===== */
+/* ===== Helpers ===== */
 function formatUSDC(n) {
   return `$${n.toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -53,7 +53,6 @@ function formatUSDC(n) {
   })}`;
 }
 
-/* ===== Top-level providers ===== */
 export default function MoonShipPresale() {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = clusterApiUrl(network);
@@ -78,7 +77,7 @@ export default function MoonShipPresale() {
   );
 }
 
-/* ===== Main Presale UI ===== */
+/* ===== Main UI ===== */
 function MoonShipInner() {
   const TIERS = CONFIG.presale.tiers;
   const HARD_CAP = CONFIG.presale.hardCapUSDC;
@@ -98,7 +97,7 @@ function MoonShipInner() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    const stars = Array.from({ length: 120 }, () => ({
+    const stars = Array.from({ length: 150 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       r: Math.random() * 1.2,
@@ -119,7 +118,7 @@ function MoonShipInner() {
     draw();
   }, []);
 
-  // Presale contribution logic
+  // Presale logic
   const { currentPrice } = getTierState(raisedUSDC, TIERS);
   const estQuote = quoteTokensForContribution(
     raisedUSDC,
@@ -153,76 +152,65 @@ function MoonShipInner() {
     setContributionDisplay(formatUSDC(contribution));
   }
 
-  // Blinking lights overlay
-  const lights = useMemo(() => {
-    const colors = ["bg-blue-400", "bg-yellow-400", "bg-red-400", "bg-green-400"];
-    return Array.from({ length: 6 }).map((_, i) => ({
-      top: `${Math.random() * 80 + 10}%`,
-      left: `${Math.random() * 80 + 10}%`,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      delay: `${i * 0.5}s`,
-    }));
-  }, []);
-
   return (
     <div className="relative min-h-screen text-white overflow-hidden">
       {/* Background */}
-      <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
+      <canvas ref={canvasRef} className="fixed inset-0 -z-40" />
 
-      {/* Nav */}
-      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40">
-        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 font-bold text-lg">🚀 MoonShip</div>
-          <div className="flex items-center gap-4">
-            <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
+      {/* Floating Mothership */}
+      <div className="fixed inset-0 flex items-center justify-center -z-30 pointer-events-none">
+        <img
+          src="/mothership.png"
+          alt="MoonShip Mothership"
+          className="w-[70%] max-w-6xl opacity-70 animate-float animate-slow-rotate drop-shadow-[0_0_60px_rgba(99,102,241,0.6)]"
+        />
+      </div>
+
+      {/* NAVBAR */}
+      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40 border-b border-indigo-500/20">
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+          <div className="text-xl font-bold bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
+            🚀 MoonShip
+          </div>
+          <div className="flex items-center gap-6">
+            <a
+              href={CONFIG.socials.twitter}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-sky-400 transition"
+            >
               Twitter
             </a>
-            <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
+            <a
+              href={CONFIG.socials.telegram}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-sky-400 transition"
+            >
               Telegram
             </a>
-            <WalletMultiButton />
+            <WalletMultiButton className="!bg-indigo-600 !hover:bg-indigo-700 rounded-lg shadow-[0_0_20px_rgba(99,102,241,0.5)]" />
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-3xl mx-auto text-center py-16 px-6">
-        <div className="relative mx-auto w-full max-w-2xl">
-          {/* Mothership image */}
-          <img
-            src="/mothership.png"
-            alt="MoonShip Mothership"
-            className="mx-auto drop-shadow-2xl animate-float"
-          />
-
-          {/* Blinking + drifting lights */}
-          <div className="absolute inset-0 pointer-events-none">
-            {lights.map((light, i) => (
-              <div
-                key={i}
-                className={`absolute w-2 h-2 rounded-full animate-blink animate-drift ${light.color}`}
-                style={{
-                  top: light.top,
-                  left: light.left,
-                  animationDelay: light.delay,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <h2 className="mt-8 text-4xl font-extrabold tracking-tight">
-          Join the MoonShip Presale
-        </h2>
-        <p className="mt-3 text-lg text-gray-300">
+      {/* HERO */}
+      <section className="relative z-10 max-w-3xl mx-auto text-center py-24 px-6">
+        <h1 className="text-6xl font-extrabold tracking-tight">
+          <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
+            MoonShip Presale
+          </span>
+        </h1>
+        <p className="mt-4 text-lg text-gray-300">
+          Join the interstellar journey 🌌 <br />
           Raising <b>{formatUSDC(HARD_CAP)}</b> — Current price:{" "}
           <b>{currentPrice.toLocaleString()} MSHP/USDC</b>.
         </p>
       </section>
 
-      {/* Presale Card */}
-      <section className="max-w-xl mx-auto px-6">
-        <div className="bg-slate-900/70 border border-white/10 rounded-xl p-6">
+      {/* PRESALE CARD */}
+      <section className="relative z-10 max-w-xl mx-auto px-6">
+        <div className="bg-slate-900/70 backdrop-blur border border-indigo-500/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(99,102,241,0.3)]">
           <div className="flex justify-between text-xs text-white/60 mb-2">
             <span>Raised</span>
             <span>
@@ -240,7 +228,7 @@ function MoonShipInner() {
           </div>
 
           {!soldOut ? (
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="sm:col-span-2">
                 <label className="text-xs text-white/60">Amount (USDC)</label>
                 <input
@@ -248,11 +236,13 @@ function MoonShipInner() {
                   value={contributionDisplay}
                   onChange={handleContributionChange}
                   onBlur={handleContributionBlur}
-                  className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2"
+                  className="mt-2 w-full rounded-lg bg-slate-800/70 px-3 py-2 
+                             border border-indigo-500/30 focus:outline-none 
+                             focus:ring-2 focus:ring-indigo-500"
                 />
-                <div className="mt-2 text-[12px] text-white/60">
+                <div className="mt-3 text-[12px] text-white/60">
                   You’ll receive ~{" "}
-                  <span className="text-white">
+                  <span className="text-white font-semibold">
                     {estQuote.totalTokens.toLocaleString()}
                   </span>{" "}
                   MSHP
@@ -260,21 +250,25 @@ function MoonShipInner() {
               </div>
               <button
                 onClick={handleContribute}
-                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 font-semibold"
+                className="rounded-xl px-6 py-3 font-semibold text-lg 
+                           bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
+                           shadow-[0_0_20px_rgba(99,102,241,0.6)] 
+                           hover:scale-105 hover:shadow-[0_0_40px_rgba(99,102,241,0.9)] 
+                           transition-all duration-300"
               >
                 Contribute
               </button>
             </div>
           ) : (
-            <div className="mt-4 text-emerald-400 font-semibold">
+            <div className="mt-4 text-emerald-400 font-semibold text-center">
               Presale Sold Out 🚀
             </div>
           )}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-16 text-center text-sm text-white/50 pb-8">
+      {/* FOOTER */}
+      <footer className="relative z-10 mt-20 text-center text-sm text-white/50 pb-12">
         Presale price progression across <b>{TIERS.length}</b> tiers.
       </footer>
     </div>

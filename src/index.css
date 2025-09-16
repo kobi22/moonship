@@ -1,58 +1,51 @@
 @import "tailwindcss/preflight";
 @import "tailwindcss/utilities";
 
+/* Custom global styles */
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-    "Noto Color Emoji";
-  background-color: #030014; /* dark space bg */
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  background-color: #030014; /* space-dark background */
   color: white;
 }
 
-/* ===== Custom Animations ===== */
-
-/* Floating up/down effect for mothership */
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-15px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* Blinking lights */
+/* Extra animations for blinking lights + floating mothership */
 @keyframes blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.2;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
 }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 .animate-blink {
   animation: blink 2s infinite;
 }
 
-/* Gentle drifting (small X/Y shift) */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
 @keyframes drift {
-  0% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(4px, -3px);
-  }
-  100% {
-    transform: translate(0, 0);
-  }
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(10px, -10px); }
+  100% { transform: translate(0, 0); }
 }
+
+@keyframes slow-rotate {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(2deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
 .animate-drift {
-  animation: drift 5s ease-in-out infinite;
+  animation: drift 6s ease-in-out infinite;
 }
+
+.animate-slow-rotate {
+  animation: slow-rotate 20s ease-in-out infinite;
+}
+
