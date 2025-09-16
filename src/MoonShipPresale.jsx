@@ -36,7 +36,7 @@ const CONFIG = {
   presale: {
     hardCapUSDC: 15_000_000,
     softCapUSDC: 500_000,
-    initialRaisedUSDC: 1_250_000, // mock starting raised amount
+    initialRaisedUSDC: 0, // mock starting raised amount
     tiers: DEFAULT_TIERS,
   },
   socials: {
