@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -18,9 +18,14 @@ import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-// =============================================================
-// CONFIG
-// =============================================================
+/* ===== Mock config ===== */
+const DEFAULT_TIERS = generateLinearTiers({
+  tiers: 30,
+  startPrice: 0.0001, // start at $0.01 per token
+  endPrice: 0.05,   // final price = $0.05 per token
+  totalCapUSDC: 15_000_000, // 15 million raise target
+});
+
 const CONFIG = {
   token: {
     name: "MoonShip",
@@ -29,21 +34,26 @@ const CONFIG = {
     totalSupply: 1_000_000_000,
   },
   presale: {
-    hardCapUSD: 15_000_000,
-    softCapUSD: 500_000,
-    initialRaisedUSD: 1_287_450,
-    launchPrice: 0.05, // Presale ends at $0.05
-    accepted: ["USDC", "SOL"],
+    hardCapUSDC: 15_000_000,
+    softCapUSDC: 500_000,
+    initialRaisedUSDC: 0, // mock starting raised amount
+    tiers: DEFAULT_TIERS,
   },
   socials: {
     twitter: "https://x.com/yourmoonship",
     telegram: "https://t.me/yourmoonship",
+    website: "https://moonship.shop",
   },
 };
 
-// =============================================================
-// Wallet Providers wrapper
-// =============================================================
+/* ===== Helpers ===== */
+function formatUSDC(n) {
+  return `$${n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export default function MoonShipPresale() {
   const network = WalletAdapterNetwork.Mainnet;
   const endpoint = clusterApiUrl(network);
@@ -69,19 +79,15 @@ export default function MoonShipPresale() {
   );
 }
 
-// =============================================================
-// Inner Component (UI)
-// =============================================================
+/* ===== Main UI ===== */
 function MoonShipInner() {
-  const HARD_CAP = CONFIG.presale.hardCapUSD;
-  const [raisedUSD, setRaisedUSD] = useState(CONFIG.presale.initialRaisedUSD);
-  const [contribution, setContribution] = useState(1000);
+  const TIERS = CONFIG.presale.tiers;
+  const HARD_CAP = CONFIG.presale.hardCapUSDC;
+  const [raisedUSDC, setRaisedUSDC] = useState(CONFIG.presale.initialRaisedUSDC);
+  const [contribution, setContribution] = useState(1000); // default mock
   const [userAllocationTokens, setUserAllocationTokens] = useState(0);
 
   const { connected, publicKey } = useWallet();
-
-  const percent = Math.min(100, (raisedUSD / HARD_CAP) * 100);
-  const soldOut = raisedUSD >= HARD_CAP;
 
   // Background starfield
   const canvasRef = useRef(null);
@@ -113,114 +119,178 @@ function MoonShipInner() {
     draw();
   }, []);
 
+  // Presale logic
+  const { currentPrice } = getTierState(raisedUSDC, TIERS);
+  const estQuote = quoteTokensForContribution(
+    raisedUSDC,
+    safeNum(contribution),
+    TIERS
+  );
+
+  const percent = Math.min(100, (raisedUSDC / HARD_CAP) * 100);
+  const soldOut = raisedUSDC >= HARD_CAP;
+
   function handleContribute() {
     if (!connected || !publicKey) return alert("Connect your wallet first.");
-    const add = Number(contribution);
-    if (!isFinite(add) || add <= 0) return;
-    const remaining = Math.max(0, HARD_CAP - raisedUSD);
+    const add = safeNum(contribution);
+    if (!Number.isFinite(add) || add <= 0) return;
+    const remaining = Math.max(0, HARD_CAP - raisedUSDC);
     const delta = Math.min(add, remaining);
     if (delta <= 0) return alert("Presale hard cap reached.");
-
-    setRaisedUSD((x) => x + delta);
-    setUserAllocationTokens(
-      (t) => t + Math.floor(delta / CONFIG.presale.launchPrice)
-    );
+    const q = quoteTokensForContribution(raisedUSDC, delta, TIERS);
+    setRaisedUSDC((x) => +(x + delta).toFixed(2));
+    setUserAllocationTokens((t) => +(t + q.totalTokens).toFixed(0));
   }
 
   return (
-    <div className="relative min-h-screen text-white bg-black overflow-hidden">
+    <div className="relative min-h-screen text-white overflow-hidden">
       {/* Background */}
-      <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
+      <canvas ref={canvasRef} className="fixed inset-0 -z-40" />
 
-      {/* Nav */}
-      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40">
-        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 font-bold text-lg">
+      {/* NAVBAR */}
+      <header className="sticky top-0 z-20 backdrop-blur bg-slate-900/40 border-b border-indigo-500/20">
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+          <div className="text-xl font-bold bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
             🚀 MoonShip
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
             <a href={CONFIG.socials.twitter} target="_blank" rel="noreferrer">
-              X
+              Twitter
             </a>
             <a href={CONFIG.socials.telegram} target="_blank" rel="noreferrer">
-              TG
+              Telegram
             </a>
-            <WalletMultiButton />
+            <WalletMultiButton className="!bg-indigo-600 !hover:bg-indigo-700 rounded-lg shadow-[0_0_20px_rgba(99,102,241,0.5)]" />
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-3xl mx-auto text-center py-16 px-6">
-        <h2 className="text-4xl font-extrabold tracking-tight">
-          Join the MoonShip Presale
-        </h2>
-        <p className="mt-3 text-lg text-gray-300">
-          Raising{" "}
-          <b>${CONFIG.presale.hardCapUSD.toLocaleString()}</b> USD. Launch price{" "}
-          <b>${CONFIG.presale.launchPrice.toFixed(2)}</b> per MSHP.
+      {/* HERO */}
+      <section className="relative z-10 max-w-3xl mx-auto text-center py-20 px-6">
+        <h1 className="text-6xl font-extrabold tracking-tight">
+          <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
+            MoonShip Presale
+          </span>
+        </h1>
+        <p className="mt-4 text-lg text-gray-300">
+          Raising <b>{formatUSDC(HARD_CAP)}</b> <br />
+          Final price per token: <b>$0.05</b>
         </p>
       </section>
 
-      {/* Presale Card */}
-      <section className="max-w-2xl mx-auto px-6">
-        <div className="mt-6 rounded-xl bg-slate-900/70 border border-white/10 p-6">
-          {/* Progress Bar */}
-          <div className="flex justify-between text-xs text-white/60 mb-1">
+      {/* PRESALE CARD */}
+      <section className="relative z-10 max-w-xl mx-auto px-6">
+        <div className="bg-slate-900/70 backdrop-blur border border-indigo-500/20 rounded-2xl p-8 shadow-lg">
+          <div className="flex justify-between text-xs text-white/60 mb-2">
             <span>Raised</span>
             <span>
-              ${raisedUSD.toLocaleString()} / $
-              {CONFIG.presale.hardCapUSD.toLocaleString()}
+              {formatUSDC(raisedUSDC)} / {formatUSDC(HARD_CAP)}
             </span>
           </div>
-          <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+          <div className="mt-2 h-3 rounded-full bg-white/10 overflow-hidden">
             <div
-              className="h-3 bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 transition-all duration-700 ease-out"
+              className="h-3 bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400"
               style={{ width: `${percent}%` }}
             />
           </div>
-          <div className="mt-1 text-right text-xs">{percent.toFixed(1)}%</div>
+          <div className="mt-1 text-right text-[11px] text-white/60">
+            {percent.toFixed(1)}%
+          </div>
 
-          {/* Contribution */}
           {!soldOut ? (
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="sm:col-span-2">
-                <label className="text-xs text-white/60">Amount (USD)</label>
+                <label className="text-xs text-white/60">Amount (USDC)</label>
                 <input
                   type="number"
                   value={contribution}
                   onChange={(e) => setContribution(Number(e.target.value))}
-                  className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="mt-2 w-full rounded-lg bg-slate-800/70 px-3 py-2 
+                             border border-indigo-500/30 focus:outline-none 
+                             focus:ring-2 focus:ring-indigo-500"
                 />
-                <div className="mt-2 text-sm">
+                <div className="mt-3 text-[12px] text-white/60">
                   You’ll receive ~{" "}
-                  <span className="font-semibold">
-                    {userAllocationTokens.toLocaleString()}
+                  <span className="text-white font-semibold">
+                    {estQuote.totalTokens.toLocaleString()}
                   </span>{" "}
                   MSHP
                 </div>
               </div>
               <button
                 onClick={handleContribute}
-                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 font-semibold"
+                className="rounded-xl px-6 py-3 font-semibold text-lg 
+                           bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
+                           hover:scale-105 transition-all duration-300"
               >
                 Contribute
               </button>
             </div>
           ) : (
-            <div className="mt-4 text-emerald-400 font-semibold">
+            <div className="mt-4 text-emerald-400 font-semibold text-center">
               Presale Sold Out 🚀
             </div>
           )}
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="mt-16 border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-gray-400">
-          Presale ends at <span className="font-semibold text-white">$0.05</span> per MSHP.
-        </div>
-      </footer>
     </div>
   );
+}
+
+/* ===== Helpers ===== */
+function generateLinearTiers({ tiers, startPrice, endPrice, totalCapUSDC }) {
+  const out = [];
+  const step = tiers > 1 ? (endPrice - startPrice) / (tiers - 1) : 0;
+  const perTierCap = totalCapUSDC / tiers;
+  let cumulative = 0;
+  for (let i = 0; i < tiers; i++) {
+    const price = +(startPrice + step * i).toFixed(4);
+    cumulative = +(cumulative + perTierCap).toFixed(2);
+    out.push({
+      pricePerUSDC: price,
+      capUSDC: perTierCap,
+      cumulativeUSDC: cumulative,
+    });
+  }
+  return out;
+}
+
+function getTierState(currentRaisedUSDC, tiers) {
+  let acc = 0;
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i];
+    const tierEnd = acc + t.capUSDC;
+    if (currentRaisedUSDC < tierEnd) {
+      return {
+        currentTierIndex: i,
+        tierRemainingUSDC: tierEnd - currentRaisedUSDC,
+        currentPrice: t.pricePerUSDC,
+      };
+    }
+    acc = tierEnd;
+  }
+  const last = tiers[tiers.length - 1];
+  return { currentTierIndex: tiers.length - 1, tierRemainingUSDC: 0, currentPrice: last.pricePerUSDC };
+}
+
+function quoteTokensForContribution(currentRaisedUSDC, amountUSDC, tiers) {
+  let remaining = Math.max(0, amountUSDC);
+  let accRaised = currentRaisedUSDC;
+  let totalTokens = 0;
+  for (let i = 0; i < tiers.length && remaining > 0; i++) {
+    const t = tiers[i];
+    const tierEnd = tiers.slice(0, i + 1).reduce((a, x) => a + x.capUSDC, 0);
+    if (accRaised >= tierEnd) continue;
+    const room = tierEnd - accRaised;
+    const take = Math.min(room, remaining);
+    totalTokens += take / (t.pricePerUSDC || 1);
+    remaining -= take;
+    accRaised += take;
+  }
+  return { totalTokens };
+}
+
+function safeNum(n) {
+  const x = Number(n);
+  return Number.isFinite(x) ? x : 0;
 }
