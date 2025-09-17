@@ -34,11 +34,12 @@ const CONFIG = {
     totalSupply: 1_000_000_000,
   },
   presale: {
-    hardCapUSDC: 15_000_000,
-    softCapUSDC: 500_000,
-    initialRaisedUSDC: 0, // mock starting raised amount
-    tiers: DEFAULT_TIERS,
-  },
+  hardCapUSDC: 15_000_000,
+  softCapUSDC: 500_000,
+  initialRaisedUSDC: 0,
+  launchPrice: 0.05, // final price
+  tiers: DEFAULT_TIERS,
+},
   socials: {
     twitter: "https://x.com/yourmoonship",
     telegram: "https://t.me/yourmoonship",
