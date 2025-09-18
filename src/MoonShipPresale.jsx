@@ -13,7 +13,7 @@ import {
   SolflareWalletAdapter,
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
+} from "@solana/wallet-adapter-wallets"; 
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
